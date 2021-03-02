@@ -1,3 +1,3 @@
 all:
 	gcc main.c -o main
-	./main
+	./program_run.sh
