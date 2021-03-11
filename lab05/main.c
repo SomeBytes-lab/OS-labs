@@ -5,18 +5,17 @@
 #include "sys/wait.h"
 #include "sys/stat.h"
 #include "fcntl.h"
-#include <fcntl.h>
 
 void print_array_int(int* arr, int size)
 {
-   for (int i = 0; i < size; i++)
-      printf("%d ", arr[i]);
-   printf("\n");
+   	for (int i = 0; i < size; i++)
+		printf("%d ", arr[i]);
+	printf("\n");
 }
 
 int compare_int_value(const void* a, const void* b)
 {
-   return *((int*) b) - *((int*) a);
+	return *((int*) b) - *((int*) a);
 }
 
 int main(int argv, char* argc[])
@@ -128,9 +127,9 @@ int main(int argv, char* argc[])
 		close(fd_fifo);
 	}
 
-   char delete_fifo_file[124];
-   sprintf(delete_fifo_file, "rm %s", file_name);
-   system(delete_fifo_file);
+	char delete_fifo_file[124];
+	sprintf(delete_fifo_file, "rm %s", file_name);
+	system(delete_fifo_file);
 
 	free(array);
 	return 0;
