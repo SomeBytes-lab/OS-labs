@@ -5,6 +5,7 @@
 #include "sys/wait.h"
 #include "sys/stat.h"
 #include "fcntl.h"
+#include <sys/cdefs.h>
 
 void print_array_int(int* arr, int size)
 {
@@ -66,7 +67,9 @@ int main(int argv, char* argc[])
 	else if (child_process == 0)
 	{
 		close(fd_pipe[1]);
-		size = read(fd_pipe[0], array, sizeof(int) * array_size);
+
+		int* new_array = malloc(sizeof(int) * array_size);
+		size = read(fd_pipe[0], new_array, sizeof(int) * array_size);
 
 		if (size < 0)
 		{
@@ -74,7 +77,7 @@ int main(int argv, char* argc[])
 			return -1;
 		}
 
-		qsort(array, array_size, sizeof(int), compare_int_value);
+		qsort(new_array, array_size, sizeof(int), compare_int_value);
 		close(fd_pipe[0]);
 
 		if ((fd_fifo = open(file_name, O_WRONLY)) < 0)
@@ -83,7 +86,7 @@ int main(int argv, char* argc[])
 			return -1;
 		}
 
-		size = write(fd_fifo, array, sizeof(int) * array_size);
+		size = write(fd_fifo, new_array, sizeof(int) * array_size);
 		if (size != sizeof(int) * array_size)
 		{
 			printf("Error! Child can't write all array using FIFO!\n");
@@ -91,6 +94,7 @@ int main(int argv, char* argc[])
 		}
 
 		close(fd_fifo);
+		free(new_array);
 
 		printf("Child process done!\n");
 		return 0;
