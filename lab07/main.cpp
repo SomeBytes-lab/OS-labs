@@ -73,9 +73,7 @@ int main(void)
 		printf("%i ", random_numbers[i]);
 	printf("\n");
 
-	const size_t sem_count = 10;
 	int msg_id = msgget(IPC_PRIVATE, 0600 | IPC_CREAT);
-
 	if (msg_id < 0)
 	{
 		perror("Error with msgget()!\n");
