@@ -90,7 +90,7 @@ int main(void)
 
 	msg_struct parent_msg;
 
-	parent_msg.mtype = 101;
+	parent_msg.mtype = 7;
 	for (int i = 0; i < 4; i++)
 		parent_msg.msg_data[i] = random_numbers[i];
 
