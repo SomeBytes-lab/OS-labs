@@ -46,10 +46,11 @@ void semaphore_set_state(int sem_id, int num, int state)
 
 char semaphore_lock(int sem_id, int num, char* array_check_is_lock_ptr)
 {
-	char is_lock = array_check_is_lock_ptr[num];
+	if (array_check_is_lock_ptr[num])
+		return 1;
 	semaphore_set_state(sem_id, num, SEMAPHORE_LOCK);
 	array_check_is_lock_ptr[num] = 1;
-	return is_lock;
+	return 0;
 }
 
 void semaphore_unlock(int sem_id, int num, char* array_check_is_lock_ptr)
@@ -98,7 +99,7 @@ void parent_main_code(int* array, char* array_check_ptr, int array_size, int sem
 		for (int i = 0; i < array_size; i++)
 		{
 			if (semaphore_lock(sem_id, i, array_check_ptr))
-				printf("[%d] ", array[i]);
+				printf("block ");
 			else
 				printf("%d ", array[i]);
 			semaphore_unlock(sem_id, i, array_check_ptr);
