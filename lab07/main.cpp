@@ -12,6 +12,7 @@
 typedef struct {
 	long mtype;
 	int msg_data[4];
+	char is_last;
 } msg_struct;
 
 void swap_values(int* first, int* second)
@@ -21,26 +22,23 @@ void swap_values(int* first, int* second)
 	*second = *first;
 }
 
-int get_factorial(int i)
-{
-	if (i == 0)
-		return 1;
-	else
-		return i * get_factorial(i - 1);
-}
-
 void* pthread_work(void* args)
 {
 	msg_struct pthread_msg;	
 	int msg_id = *((int *) args);
 
 	ssize_t msg_len = msgrcv(msg_id, &pthread_msg, sizeof(pthread_msg), 0, 0);
-	printf("Thread received random numbers. Ready to work!\n");
-	
+
 	do
 	{
+		if (!std::next_permutation(pthread_msg.msg_data, pthread_msg.msg_data + 4))
+		{
+			pthread_msg.is_last = 1;
+			msgsnd(msg_id, &pthread_msg, sizeof(pthread_msg), 0);
+			break;
+		}
 		msgsnd(msg_id, &pthread_msg, sizeof(pthread_msg), 0);
-	} while(std::next_permutation(pthread_msg.msg_data, pthread_msg.msg_data + 4));
+	} while(1);
 
 	return 0;
 }
@@ -48,7 +46,7 @@ void* pthread_work(void* args)
 void print_received_msg(msg_struct* msg)
 {
 	for (int i = 0; i < 4; i++)
-		printf("%d ", msg->msg_data[i]);
+		printf("%i ", msg->msg_data[i]);
 	printf("\n");
 }
 
@@ -88,24 +86,25 @@ int main(void)
 
 	msg_struct parent_msg;
 
-	parent_msg.mtype = 7;
+	parent_msg.mtype = 5;
+	parent_msg.is_last = 0;
 	for (int i = 0; i < 4; i++)
 		parent_msg.msg_data[i] = random_numbers[i];
 
 	msgsnd(msg_id, &parent_msg, sizeof(parent_msg), 0);
 
 	int count_msg_received = 0;
-	int count_msg_to_receive = get_factorial(4);
-
-	printf("Needs: %d\n", count_msg_to_receive);
-
-	while (count_msg_received != count_msg_to_receive)
+	while (!parent_msg.is_last)
 	{
-		ssize_t msg_len = msgrcv(msg_id, &parent_msg, sizeof(parent_msg), 0, 0);
-		printf("Received %li bytes: ", msg_len);
+		printf("=== Received next msg ===\n");
+		msgrcv(msg_id, &parent_msg, sizeof(parent_msg), 0, 0);
 		print_received_msg(&parent_msg);
 		count_msg_received++;
-	}
+	};
+
+	printf("========= RESULT =========\n");
+	printf("Msg count: %i\n", count_msg_received);
+	printf("==========================\n");
 
 	msgctl(msg_id, IPC_RMID, NULL);
 
