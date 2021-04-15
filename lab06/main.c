@@ -9,6 +9,7 @@
 #include "sys/sem.h"
 #include "sys/ipc.h"
 #include "sys/wait.h"
+#include <sys/ipc.h>
 
 #define SEMAPHORE_UNLOCK 1
 #define SEMAPHORE_LOCK  -1
@@ -44,19 +45,13 @@ void semaphore_set_state(int sem_id, int num, int state)
 	semop(sem_id, &op, 1);
 }
 
-char semaphore_lock(int sem_id, int num, char* array_check_is_lock_ptr)
+char semaphore_set_state_nowait(int sem_id, int num, int state)
 {
-	if (array_check_is_lock_ptr[num])
-		return 1;
-	semaphore_set_state(sem_id, num, SEMAPHORE_LOCK);
-	array_check_is_lock_ptr[num] = 1;
-	return 0;
-}
-
-void semaphore_unlock(int sem_id, int num, char* array_check_is_lock_ptr)
-{
-	semaphore_set_state(sem_id, num, SEMAPHORE_UNLOCK);
-	array_check_is_lock_ptr[num] = 0;
+	struct sembuf op;
+	op.sem_op = state;
+	op.sem_flg = IPC_NOWAIT;
+	op.sem_num = num;
+	return semop(sem_id, &op, 1);
 }
 
 void swap_values(int* first, int* second)
@@ -66,7 +61,7 @@ void swap_values(int* first, int* second)
 	*second = temp;
 }
 
-void child_main_code(int* array, char* array_check_ptr, int array_size, int sem_id)
+void child_main_code(int* array, int array_size, int sem_id)
 {
 	double factor = 1.2473309;
 	int step = array_size - 1;
@@ -75,14 +70,14 @@ void child_main_code(int* array, char* array_check_ptr, int array_size, int sem_
 	{
 		for (int i = 0; i + step < array_size; i++)
 		{
-			semaphore_lock(sem_id, i, array_check_ptr);
-			semaphore_lock(sem_id, i + step, array_check_ptr);
+			semaphore_set_state(sem_id, i, SEMAPHORE_LOCK);
+			semaphore_set_state(sem_id, i + step, SEMAPHORE_LOCK);
 
 			if (array[i] > array[i + step])
 				swap_values(&array[i], &array[i + step]);
 
-			semaphore_unlock(sem_id, i + step, array_check_ptr);
-			semaphore_unlock(sem_id, i, array_check_ptr);
+			semaphore_set_state(sem_id, i + step, SEMAPHORE_UNLOCK);
+			semaphore_set_state(sem_id, i, SEMAPHORE_UNLOCK);
 		}
 		step /= factor;
 	}
@@ -90,7 +85,7 @@ void child_main_code(int* array, char* array_check_ptr, int array_size, int sem_
 	exit(0);
 }
 
-void parent_main_code(int* array, char* array_check_ptr, int array_size, int sem_id, pid_t child_id)
+void parent_main_code(int* array, int array_size, int sem_id, pid_t child_id)
 {
 	int iteration = 0;
 	while (!waitpid(child_id, NULL, WNOHANG))
@@ -98,11 +93,13 @@ void parent_main_code(int* array, char* array_check_ptr, int array_size, int sem
 		printf("--- This is iteration %i ---\n", iteration);
 		for (int i = 0; i < array_size; i++)
 		{
-			if (semaphore_lock(sem_id, i, array_check_ptr))
+			if (semaphore_set_state_nowait(sem_id, i, SEMAPHORE_LOCK) == -1)
 				printf("block ");
 			else
+			{
 				printf("%d ", array[i]);
-			semaphore_unlock(sem_id, i, array_check_ptr);
+				semaphore_set_state(sem_id, i, SEMAPHORE_UNLOCK);
+			}
 		}
 		printf("\n");
 		iteration++;
@@ -152,9 +149,6 @@ int main(int argv, char* argc[])
 
 	int sem_id = semget(IPC_PRIVATE, array_size, 0600 | IPC_CREAT);
 
-	int check_mem_id;
-	char* array_check_is_lock = allocate_shared_memory(sizeof(char) * array_size, &check_mem_id);
-
 	if (sem_id < 0)
 	{
 		perror("Error with semget()!\n");
@@ -173,14 +167,13 @@ int main(int argv, char* argc[])
 	if (child_process_id == -1)
 		perror("Error with fork() - process 1\n");
 	else if (child_process_id == 0)
-		child_main_code(array_ptr, array_check_is_lock, array_size, sem_id);
+		child_main_code(array_ptr, array_size, sem_id);
 	else
-		parent_main_code(array_ptr, array_check_is_lock, array_size, sem_id, child_process_id);
+		parent_main_code(array_ptr, array_size, sem_id, child_process_id);
 
 
 	free_semaphores(&sem_id);
 	free_shared_memory(&mem_id);
-	free_shared_memory(&check_mem_id);
 
 	return 0;
 }
