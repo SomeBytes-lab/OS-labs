@@ -149,6 +149,8 @@ int main(int argv, char* argc[])
 
 	close(udp_socket_fd);
 
+	free(client_array);
+
 	free(udp_server_ip);
 	free(udp_server_port);
 
