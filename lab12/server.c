@@ -111,12 +111,13 @@ void client_service(const u_int16_t tcp_socket_fd, const struct sockaddr_in* ser
 					break;
 				}
 
-				char file_buffer[file_to_send.file_size];
+				char file_buffer[file_to_send.file_size + 1];
 				fread(file_buffer, sizeof(char), file_to_send.file_size, file);
+				file_buffer[file_to_send.file_size] = '\0';
 
 				fclose(file);
 
-				received_bytes = write(tcp_socket_fd, file_buffer, file_to_send.file_size);
+				received_bytes = write(tcp_socket_fd, file_buffer, file_to_send.file_size + 1);
 				if (received_bytes < 0)
 				{
 					printf("[SERVER][ERROR]: Cant send information to one of clients\n");

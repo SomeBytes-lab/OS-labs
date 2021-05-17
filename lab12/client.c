@@ -151,6 +151,7 @@ int main(int argv, char* argc[])
 				}
 				
 				FILE* file = fopen(file_to_receive.file_name, "w");
+				file_to_receive.file_size = file_to_receive.file_size + 1;
 
 				char file_buffer[file_to_receive.file_size];
 
